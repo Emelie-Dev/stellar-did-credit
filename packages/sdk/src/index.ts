@@ -14,7 +14,7 @@ import {
 export const MIN_SCORE = 300;
 export const MAX_SCORE = 850;
 
-export type NetworkType = 'testnet' | 'mainnet' | 'futurenet' | 'custom';
+export type NetworkType = "testnet" | "mainnet" | "futurenet" | "custom";
 
 export interface ScoreRecord {
   score: number;
@@ -199,6 +199,7 @@ const GOVERNANCE_ERROR_CODES: Record<number, string> = {
   12: "VoterNotRegistered",
   13: "InsufficientVoteWeight",
   14: "ProposalAlreadyCancelled",
+  19: "InvalidVotingPeriod",
 };
 
 const ERROR_CODE_MAPS: Record<string, Record<number, string>> = {
@@ -306,7 +307,10 @@ export interface BatchResult {
 /**
  * Network configurations for Stellar networks.
  */
-const NETWORK_CONFIGS: Record<Exclude<NetworkType, 'custom'>, Partial<ProtocolConfig>> = {
+const NETWORK_CONFIGS: Record<
+  Exclude<NetworkType, "custom">,
+  Partial<ProtocolConfig>
+> = {
   testnet: {
     networkPassphrase: "Test SDF Network ; September 2015",
     rpcUrl: "https://soroban-testnet.stellar.org",
@@ -330,19 +334,19 @@ export type KeypairLike = Keypair | { publicKey: string };
 
 /**
  * Create a ProtocolConfig with network-specific defaults.
- * 
+ *
  * @param network - Network type (testnet, mainnet, futurenet, custom)
  * @param overrides - Configuration overrides
  * @returns Complete ProtocolConfig with network defaults applied
  */
 export function createNetworkConfig(
   network: NetworkType,
-  overrides: Partial<ProtocolConfig> = {}
+  overrides: Partial<ProtocolConfig> = {},
 ): Partial<ProtocolConfig> {
-  if (network === 'custom') {
+  if (network === "custom") {
     return overrides;
   }
-  
+
   const networkDefaults = NETWORK_CONFIGS[network];
   return {
     ...networkDefaults,
@@ -373,7 +377,7 @@ export class GovernanceClient {
 
   /**
    * Create a scoring-weight proposal and return its on-chain ID.
-    * Proposal IDs are 1-based: the first proposal has ID 1 and ID 0 is unused.
+   * Proposal IDs are 1-based: the first proposal has ID 1 and ID 0 is unused.
    *
    * This starts the governance voting window. If the proposal passes, callers
    * must still wait for its governance execution delay, call `execute`, wait
@@ -505,8 +509,8 @@ export class GovernanceClient {
 
   /**
    * Fetch proposals by scanning the contract's monotonically increasing IDs.
-    * Proposal IDs start at 1; pass `1` or `1n` as `fromId` to include the first
-    * proposal.
+   * Proposal IDs start at 1; pass `1` or `1n` as `fromId` to include the first
+   * proposal.
    *
    * The governance contract exposes `get_proposal`, but no list endpoint, so
    * this helper performs up to `limit` read-only RPC simulations starting at
@@ -535,9 +539,7 @@ export class GovernanceClient {
 
   private governanceContract(): Contract {
     if (!this.config.governanceId?.trim()) {
-      throw new Error(
-        "governanceId is required to use the governance client",
-      );
+      throw new Error("governanceId is required to use the governance client");
     }
     return new Contract(this.config.governanceId);
   }
@@ -573,10 +575,7 @@ export class GovernanceClient {
   ): Promise<{ hash: string; retval?: xdr.ScVal }> {
     const publicKey = getPublicKey(keypair);
     const accountData = await this.server.getAccount(publicKey);
-    const sourceAccount = new Account(
-      publicKey,
-      accountData.sequenceNumber(),
-    );
+    const sourceAccount = new Account(publicKey, accountData.sequenceNumber());
     const tx = new TransactionBuilder(sourceAccount, {
       fee: this.config.baseFee ?? BASE_FEE,
       networkPassphrase: this.config.networkPassphrase,
@@ -590,7 +589,9 @@ export class GovernanceClient {
       throwContractError(sim.error, "governance");
     }
     if (!SorobanRpc.Api.isSimulationSuccess(sim)) {
-      throw new Error(`${operationName} simulation returned unexpected response`);
+      throw new Error(
+        `${operationName} simulation returned unexpected response`,
+      );
     }
 
     const retval = sim.result?.retval;
@@ -618,7 +619,7 @@ export class StellarDIDCreditSDK {
 
   constructor(config: ProtocolConfig) {
     // Apply network defaults if network is specified but URL fields are missing
-    if (config.network && config.network !== 'custom') {
+    if (config.network && config.network !== "custom") {
       const networkDefaults = NETWORK_CONFIGS[config.network];
       this.config = {
         ...networkDefaults,
@@ -993,7 +994,10 @@ export class StellarDIDCreditSDK {
       networkPassphrase: this.config.networkPassphrase,
     })
       .addOperation(
-        contract.call("get_did_document", new Address(subjectAddress).toScVal()),
+        contract.call(
+          "get_did_document",
+          new Address(subjectAddress).toScVal(),
+        ),
       )
       .setTimeout(this.config.timeoutSeconds ?? 30)
       .build();
@@ -1035,15 +1039,9 @@ export class StellarDIDCreditSDK {
    * @throws SDKError with code `INVALID_VC_HASH` for a non-32-byte hash
    * @throws SDKError with code `NOT_REGISTERED_ISSUER` for `IssuerMismatch`
    */
-  async revokeVC(
-    issuerKeypair: KeypairLike,
-    vcHash: Buffer,
-  ): Promise<string> {
+  async revokeVC(issuerKeypair: KeypairLike, vcHash: Buffer): Promise<string> {
     if (vcHash.length !== 32) {
-      throw new SDKError(
-        "INVALID_VC_HASH",
-        "vcHash must be exactly 32 bytes",
-      );
+      throw new SDKError("INVALID_VC_HASH", "vcHash must be exactly 32 bytes");
     }
 
     if (!this.config.revocationRegistryId.trim()) {
@@ -1358,7 +1356,10 @@ export class StellarDIDCreditSDK {
       networkPassphrase: this.config.networkPassphrase,
     })
       .addOperation(
-        contract.call("get_active_vc_count", new Address(subjectAddress).toScVal()),
+        contract.call(
+          "get_active_vc_count",
+          new Address(subjectAddress).toScVal(),
+        ),
       )
       .setTimeout(30)
       .build();
@@ -1627,18 +1628,10 @@ export class StellarDIDCreditSDK {
     contractId: string,
     callback: (issuer: string, subject: string, vcHash: Buffer) => void,
   ): Unsubscribe {
-    return this.subscribeToEvents(
-      contractId,
-      "VCAnch",
-      (value) => {
-        const [issuer, subject, vcHash] = parseEventTuple(
-          value,
-          "VCAnch",
-          3,
-        );
-        callback(String(issuer), String(subject), toBuffer(vcHash));
-      },
-    );
+    return this.subscribeToEvents(contractId, "VCAnch", (value) => {
+      const [issuer, subject, vcHash] = parseEventTuple(value, "VCAnch", 3);
+      callback(String(issuer), String(subject), toBuffer(vcHash));
+    });
   }
 
   /**
@@ -1652,14 +1645,10 @@ export class StellarDIDCreditSDK {
     contractId: string,
     callback: (subject: string, score: number) => void,
   ): Unsubscribe {
-    return this.subscribeToEvents(
-      contractId,
-      "Score",
-      (value) => {
-        const [subject, score] = parseEventTuple(value, "Score", 2);
-        callback(String(subject), Number(score));
-      },
-    );
+    return this.subscribeToEvents(contractId, "Score", (value) => {
+      const [subject, score] = parseEventTuple(value, "Score", 2);
+      callback(String(subject), Number(score));
+    });
   }
 
   /**
@@ -1673,14 +1662,10 @@ export class StellarDIDCreditSDK {
     contractId: string,
     callback: (issuer: string, vcHash: Buffer) => void,
   ): Unsubscribe {
-    return this.subscribeToEvents(
-      contractId,
-      "Revoked",
-      (value) => {
-        const [issuer, vcHash] = parseEventTuple(value, "Revoked", 2);
-        callback(String(issuer), toBuffer(vcHash));
-      },
-    );
+    return this.subscribeToEvents(contractId, "Revoked", (value) => {
+      const [issuer, vcHash] = parseEventTuple(value, "Revoked", 2);
+      callback(String(issuer), toBuffer(vcHash));
+    });
   }
 
   private async submitBatchRevokeChunk(
@@ -1804,8 +1789,7 @@ export class StellarDIDCreditSDK {
           (highestLedger, event) => Math.max(highestLedger, event.ledger),
           lastSeenLedger,
         );
-        lastSeenLedger =
-          Math.max(response.latestLedger, latestEventLedger) + 1;
+        lastSeenLedger = Math.max(response.latestLedger, latestEventLedger) + 1;
 
         for (const event of response.events) {
           if (!active) {
@@ -1839,7 +1823,11 @@ export class StellarDIDCreditSDK {
 /** Thrown when get_score is called for an address that has no computed score yet. */
 export class ScoreNotComputedError extends Error {
   constructor(address?: string) {
-    super(address ? `No score computed for address: ${address}` : "Score has not been computed");
+    super(
+      address
+        ? `No score computed for address: ${address}`
+        : "Score has not been computed",
+    );
     this.name = "ScoreNotComputedError";
   }
 }
@@ -1913,7 +1901,9 @@ export function parseScoreRecord(scVal: xdr.ScVal): ScoreRecord | null {
   ];
   for (const field of requiredFields) {
     if (!(field in raw)) {
-      throw new Error(`parseScoreRecord: missing field '${field}' in ScoreRecord`);
+      throw new Error(
+        `parseScoreRecord: missing field '${field}' in ScoreRecord`,
+      );
     }
   }
   return {
@@ -1923,9 +1913,7 @@ export function parseScoreRecord(scVal: xdr.ScVal): ScoreRecord | null {
     repaymentRate: Number(raw["repayment_rate"]),
     txVolume30d: BigInt(raw["tx_volume_30d"] as bigint),
     previousScore:
-      raw["previous_score"] != null
-        ? Number(raw["previous_score"])
-        : null,
+      raw["previous_score"] != null ? Number(raw["previous_score"]) : null,
     computedAtLedger: Number(raw["computed_at_ledger"]),
     stale: Boolean(raw["stale"]),
   };
@@ -1966,16 +1954,12 @@ function parseGovernanceProposal(native: unknown): GovernanceProposal {
       repaymentWeight: Number(rawWeights["repayment_weight"]),
     },
     votesFor: BigInt(raw["votes_for"] as bigint | number | string),
-    votesAgainst: BigInt(
-      raw["votes_against"] as bigint | number | string,
-    ),
+    votesAgainst: BigInt(raw["votes_against"] as bigint | number | string),
     expiryLedger: Number(raw["expiry_ledger"]),
     executionDelayLedgers: Number(raw["execution_delay_ledgers"]),
     executed: Boolean(raw["executed"]),
     cancelled: Boolean(raw["cancelled"]),
-    quorumRequired: BigInt(
-      raw["quorum_required"] as bigint | number | string,
-    ),
+    quorumRequired: BigInt(raw["quorum_required"] as bigint | number | string),
   };
 }
 
@@ -2028,7 +2012,9 @@ function parseGovernanceProposalList(scVal: xdr.ScVal): GovernanceProposal[] {
       executionDelayLedgers: Number(raw["execution_delay_ledgers"]),
       executed: Boolean(raw["executed"]),
       cancelled: Boolean(raw["cancelled"]),
-      quorumRequired: BigInt(raw["quorum_required"] as bigint | number | string),
+      quorumRequired: BigInt(
+        raw["quorum_required"] as bigint | number | string,
+      ),
     };
   });
 }
@@ -2179,10 +2165,7 @@ function throwTransactionTimeout(operationName: string, txHash: string): never {
 }
 
 function getConfirmationTimeoutMs(config: ProtocolConfig): number {
-  return (
-    config.confirmationTimeoutMs ??
-    (config.timeoutSeconds ?? 30) * 1000
-  );
+  return config.confirmationTimeoutMs ?? (config.timeoutSeconds ?? 30) * 1000;
 }
 
 function getTransactionPollIntervalMs(config: ProtocolConfig): number {
@@ -2237,9 +2220,13 @@ function isRetryableError(error: unknown): boolean {
 
   const code = String(candidate?.code ?? "").toUpperCase();
   if (
-    ["ECONNRESET", "ECONNREFUSED", "ENETUNREACH", "ETIMEDOUT", "EAI_AGAIN"].includes(
-      code,
-    )
+    [
+      "ECONNRESET",
+      "ECONNREFUSED",
+      "ENETUNREACH",
+      "ETIMEDOUT",
+      "EAI_AGAIN",
+    ].includes(code)
   ) {
     return true;
   }
@@ -2248,7 +2235,9 @@ function isRetryableError(error: unknown): boolean {
     error instanceof Error
       ? error.message.toLowerCase()
       : String(error).toLowerCase();
-  return /\b503\b|timeout|timed out|network|fetch failed|unavailable|socket/.test(message);
+  return /\b503\b|timeout|timed out|network|fetch failed|unavailable|socket/.test(
+    message,
+  );
 }
 
 function createRevokeError(message: string, details: unknown): SDKError {
@@ -2260,10 +2249,7 @@ function createRevokeError(message: string, details: unknown): SDKError {
     );
   }
 
-  if (
-    details instanceof SDKError &&
-    details.code === "TRANSACTION_TIMEOUT"
-  ) {
+  if (details instanceof SDKError && details.code === "TRANSACTION_TIMEOUT") {
     return new SDKError("TRANSACTION_TIMEOUT", message, {
       cause: details,
       transactionHash: details.transactionHash,
@@ -2271,10 +2257,7 @@ function createRevokeError(message: string, details: unknown): SDKError {
     });
   }
 
-  if (
-    details instanceof SDKError &&
-    details.code === "TRANSACTION_FAILED"
-  ) {
+  if (details instanceof SDKError && details.code === "TRANSACTION_FAILED") {
     if (containsIssuerMismatch(details.cause)) {
       return new SDKError(
         "NOT_REGISTERED_ISSUER",
