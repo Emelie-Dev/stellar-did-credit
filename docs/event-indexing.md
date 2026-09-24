@@ -157,10 +157,9 @@ The `identity-oracle`, `credit-oracle`, and `revocation-registry` contracts emit
 - **Emitted When:** An expired governance proposal is executed.
 
 #### ProposalCancelled
-
-- **Topic:** `[Symbol("PropCanc"), proposal_id: u64]`
-- **Data:** `(canceller: Address, reason: Option<String>)`
-- **Emitted When:** A governance proposal is cancelled.
+* **Topic:** `[Symbol("PropCanc"), proposal_id: u64]`
+* **Data:** `canceller: Address`
+* **Emitted When:** A governance proposal is cancelled.
 
 ---
 
