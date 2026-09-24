@@ -708,6 +708,9 @@ impl CreditOracle {
         amount: i128,
         on_time: bool,
     ) -> Result<(), CreditOracleError> {
+        if amount <= 0 {
+            return Err(CreditOracleError::InvalidAmount);
+        }
         ensure_not_paused(&env)?;
         lender.require_auth();
         let is_trusted: bool = env
@@ -1796,7 +1799,7 @@ mod tests {
     }
 
     #[test]
-    fn test_score_formula_readme_example_rows() {
+    fn scoring_examples() {
         // Pins every "Example scores" row in README.md (and the worked
         // examples in docs/scoring-spec.md) to compute_score_pure so the
         // documentation can never drift from the implementation again.
@@ -2423,6 +2426,27 @@ mod tests {
     }
 
     #[test]
+    fn test_record_repayment_invalid_amount() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let contract_id = env.register_contract(None, CreditOracle);
+        let client = CreditOracleClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let lender = Address::generate(&env);
+        let subject = Address::generate(&env);
+
+        client.initialize(&admin);
+        client.register_lender(&admin, &lender);
+
+        let result = client.try_record_repayment(&lender, &subject, &-1, &true);
+        assert_eq!(result, Err(Ok(CreditOracleError::InvalidAmount)));
+
+        let zero_result = client.try_record_repayment(&lender, &subject, &0, &true);
+        assert_eq!(zero_result, Err(Ok(CreditOracleError::InvalidAmount)));
+    }
+
+    #[test]
     fn test_list_feeders_returns_only_currently_registered() {
         let env = Env::default();
         env.mock_all_auths();
@@ -2873,7 +2897,7 @@ mod tests {
     }
 
     #[test]
-    fn test_flag_score_input_rejects_invalid_key() {
+    fn flag_score_input_invalid_key() {
         let env = Env::default();
         env.mock_all_auths();
         let contract_id = env.register_contract(None, CreditOracle);
@@ -2883,7 +2907,7 @@ mod tests {
         let subject = Address::generate(&env);
         client.initialize(&admin);
 
-        let bad_key = soroban_sdk::Symbol::new(&env, "bad_input");
+        let bad_key = soroban_sdk::Symbol::new(&env, "invalid");
         let reason = soroban_sdk::String::from_str(&env, "test");
         let result = client.try_flag_score_input(&subject, &bad_key, &reason);
         assert_eq!(result, Err(Ok(CreditOracleError::InvalidInputKey)));
