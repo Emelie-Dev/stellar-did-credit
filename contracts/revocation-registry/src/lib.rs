@@ -417,8 +417,9 @@ impl RevocationRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use soroban_sdk::testutils::Events;
     use proptest::prelude::*;
+    use soroban_sdk::testutils::Events;
+    use soroban_sdk::TryIntoVal;
     use soroban_sdk::{testutils::Address as _, Env};
 
     #[test]
