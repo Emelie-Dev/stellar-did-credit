@@ -629,22 +629,43 @@ describe("StellarDIDCreditSDK", () => {
       const { SorobanRpc } = jest.requireMock("@stellar/stellar-sdk");
       const serverMock = SorobanRpc.Server as jest.Mock;
 
-      mockSimulateTransaction.mockResolvedValue({
-        result: {
-          retval: {
-            value: {
-              score: 612,
-              last_updated: 1_700_000_000,
-              vc_count: 3,
-              repayment_rate: 8000,
-              tx_volume_30d: 1_000_000n,
-              previous_score: null,
-              computed_at_ledger: 1234567,
-              stale: false,
+      mockSimulateTransaction
+        .mockResolvedValueOnce({
+          result: {
+            retval: {
+              value: {
+                score: 612,
+                last_updated: 1_700_000_000,
+                vc_count: 3,
+                repayment_rate: 8000,
+                tx_volume_30d: 1_000_000n,
+                previous_score: null,
+                computed_at_ledger: 1234567,
+                stale: false,
+              },
             },
           },
-        },
-      });
+        })
+        .mockResolvedValueOnce({
+          result: { retval: { value: "ipfs://QmTestDID123" } },
+        })
+        .mockResolvedValueOnce({
+          result: { retval: { value: 3 } },
+        })
+        .mockResolvedValueOnce({
+          result: {
+            retval: {
+              value: {
+                vc_weight: 40,
+                tx_weight: 30,
+                repayment_weight: 30,
+              },
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          result: { retval: { value: true } },
+        });
 
       const sdk = new StellarDIDCreditSDK(mockConfig);
       expect(serverMock).toHaveBeenCalledTimes(1);
