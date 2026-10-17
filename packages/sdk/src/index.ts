@@ -1954,7 +1954,7 @@ export class StellarDIDCreditSDK {
     const sourceAccount = new Account(this.config.simAccount, "0");
 
     const tx = new TransactionBuilder(sourceAccount, {
-      fee: BASE_FEE,
+      fee: this.config.baseFee || BASE_FEE,
       networkPassphrase: this.config.networkPassphrase,
     })
       .addOperation(
@@ -1963,7 +1963,7 @@ export class StellarDIDCreditSDK {
           new Address(subjectAddress).toScVal(),
         ),
       )
-      .setTimeout(30)
+      .setTimeout(this.config.timeoutSeconds ?? 30)
       .build();
 
     const sim = await server.simulateTransaction(tx);
@@ -1981,7 +1981,12 @@ export class StellarDIDCreditSDK {
       throw new Error("No return value in simulation result");
     }
 
-    return scValToNative(resultScVal) as number;
+    const count = scValToNative(resultScVal);
+    if (typeof count !== "number" || !Number.isInteger(count) || count < 0) {
+      throw new Error("get_active_vc_count returned an invalid count");
+    }
+
+    return count;
   }
 
   /**
