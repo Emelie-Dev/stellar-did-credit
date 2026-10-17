@@ -468,18 +468,23 @@ describe("Address validation and error handling", () => {
     expect(count).toBe(0);
   });
 
-  it("getActiveVcCount returns 0 on simulation error", async () => {
+  it("getActiveVcCount throws on simulation error", async () => {
     const { getActiveVcCount } = await import("./index");
+    const subjectAddress =
+      "GBAD5234567234567234567234567234567234567234567234567235";
 
     mockServerInstance.simulateTransaction.mockResolvedValueOnce({
-      error: "Simulation failed",
+      error: "HostError: Missing contract",
     });
 
-    const count = await getActiveVcCount(mockServerInstance as any, config, "GBAD5234567234567234567234567234567234567234567234567235");
+    await expect(
+      getActiveVcCount(mockServerInstance as any, config, subjectAddress),
+    ).rejects.toThrow(
+      `get_active_vc_count contract error for ${subjectAddress}: HostError: Missing contract`,
+    );
 
-    expect(count).toBe(0);
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("get_active_vc_count simulation failed"),
+      expect.stringContaining("get_active_vc_count contract error"),
     );
   });
 
